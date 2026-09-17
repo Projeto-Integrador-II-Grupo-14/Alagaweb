@@ -133,3 +133,87 @@ function handleOccurrenceSubmit(event) {
     alert('Ocorrência registrada com sucesso!');
     document.getElementById('occurrenceForm').reset();
 }
+
+
+// Localizar coordenadas ocorrência
+
+document.getElementById("btnLocalizacao").addEventListener("click", function () {
+
+    const mensagem = document.getElementById("localizacaoMensagem");
+
+    if (!navigator.geolocation) {
+        mensagem.textContent = "Seu navegador não oferece suporte à localização.";
+        return;
+    }
+
+    mensagem.textContent = "Obtendo sua localização...";
+
+    navigator.geolocation.getCurrentPosition(
+        function (position) {
+            document.getElementById("latitude").value =
+                position.coords.latitude;
+
+            document.getElementById("longitude").value =
+                position.coords.longitude;
+
+            mensagem.textContent =
+                "Localização obtida com sucesso. Confirme o endereço antes de enviar.";
+        },
+        function () {
+            mensagem.textContent =
+                "Não foi possível obter sua localização. Informe o endereço manualmente.";
+        },
+        {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+        }
+    );
+});
+
+
+document.addEventListener("DOMContentLoaded", function () {
+
+    const detailsModal = document.getElementById("detailsOccurrenceModal");
+
+    detailsModal.addEventListener("show.bs.modal", function (event) {
+
+        const button = event.relatedTarget;
+
+        const id = button.getAttribute("data-id");
+        const regiao = button.getAttribute("data-regiao");
+        const nivel = button.getAttribute("data-nivel");
+        const data = button.getAttribute("data-data");
+        const status = button.getAttribute("data-status");
+        const descricao = button.getAttribute("data-descricao");
+        const latitude = button.getAttribute("data-latitude");
+        const longitude = button.getAttribute("data-longitude");
+
+        document.getElementById("detailsId").textContent = "#" + id;
+        document.getElementById("detailsRegiao").textContent = "Região #" + regiao;
+        document.getElementById("detailsNivel").textContent = nivel;
+        document.getElementById("detailsData").textContent = formatarData(data);
+        document.getElementById("detailsStatus").textContent = status;
+        document.getElementById("detailsDescricao").textContent = descricao;
+
+        document.getElementById("detailsLatitude").textContent =
+            latitude || "Não informada";
+
+        document.getElementById("detailsLongitude").textContent =
+            longitude || "Não informada";
+    });
+
+    function formatarData(data) {
+        if (!data) {
+            return "Não informada";
+        }
+
+        const dataFormatada = new Date(data);
+
+        if (isNaN(dataFormatada.getTime())) {
+            return data;
+        }
+
+        return dataFormatada.toLocaleString("pt-BR");
+    }
+});

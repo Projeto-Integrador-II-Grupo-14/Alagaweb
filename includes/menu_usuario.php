@@ -71,48 +71,112 @@
             </div>
 
             <div class="modal-body p-4">
-                <form id="profileForm" onsubmit="event.preventDefault(); alert('Perfil atualizado com sucesso!');">
-                    
-                    <!-- Avatar / Header -->
+                <form id="profileForm"
+                    action="controllers/AtualizarPerfilController.php"
+                    method="POST">
+
                     <div class="text-center mb-4">
                         <i class="bi bi-person-circle display-1 text-primary"></i>
-                        <h6 class="fw-bold mt-2 mb-0"><?php echo $_SESSION['usuario']['nome']; ?></h6>
-                        <small class="opacity-75">Membro desde <?php echo date('F de Y', strtotime($_SESSION['usuario']['data_cadastro'])); ?></small>
+
+                        <h6 class="fw-bold mt-2 mb-0">
+                            <?php echo htmlspecialchars($_SESSION['usuario']['nome']); ?>
+                        </h6>
+
+                        <small class="opacity-75">
+                            Membro desde
+                            <?php
+                            echo date(
+                                'd/m/Y',
+                                strtotime($_SESSION['usuario']['data_cadastro'])
+                            );
+                            ?>
+                        </small>
                     </div>
 
-                    <!-- Nome Completo -->
+                    <!-- Nome -->
                     <div class="mb-3">
-                        <label for="profName" class="form-label small font-monospace">Nome Completo</label>
+                        <label for="profName" class="form-label small font-monospace">
+                            Nome Completo
+                        </label>
+
                         <div class="input-group">
-                            <span class="input-group-text bg-transparent custom-input"><i class="bi bi-person"></i></span>
-                            <input type="text" class="form-control bg-transparent custom-input" id="profName" value="<?php echo $_SESSION['usuario']['nome']; ?>" required>
+                            <span class="input-group-text bg-transparent custom-input">
+                                <i class="bi bi-person"></i>
+                            </span>
+
+                            <input
+                                type="text"
+                                class="form-control bg-transparent custom-input"
+                                id="profName"
+                                name="nome"
+                                value="<?php echo htmlspecialchars($_SESSION['usuario']['nome']); ?>"
+                                required
+                            >
                         </div>
                     </div>
 
                     <!-- E-mail -->
                     <div class="mb-3">
-                        <label for="profEmail" class="form-label small font-monospace">E-mail</label>
+                        <label for="profEmail" class="form-label small font-monospace">
+                            E-mail
+                        </label>
+
                         <div class="input-group">
-                            <span class="input-group-text bg-transparent custom-input"><i class="bi bi-envelope"></i></span>
-                            <input type="email" class="form-control bg-transparent custom-input" id="profEmail" value="<?php echo $_SESSION['usuario']['email']; ?>" required>
+                            <span class="input-group-text bg-transparent custom-input">
+                                <i class="bi bi-envelope"></i>
+                            </span>
+
+                            <input
+                                type="email"
+                                class="form-control bg-transparent custom-input"
+                                id="profEmail"
+                                name="email"
+                                value="<?php echo htmlspecialchars($_SESSION['usuario']['email']); ?>"
+                                readonly
+                            >
                         </div>
                     </div>
 
-                    <!-- Telefone / WhatsApp -->
+                    <!-- Telefone -->
                     <div class="mb-3">
-                        <label for="profPhone" class="form-label small font-monospace">Telefone / WhatsApp</label>
+                        <label for="profPhone" class="form-label small font-monospace">
+                            Telefone / WhatsApp
+                        </label>
+
                         <div class="input-group">
-                            <span class="input-group-text bg-transparent custom-input"><i class="bi bi-whatsapp"></i></span>
-                            <input type="tel" class="form-control bg-transparent custom-input" id="profPhone" value="<?php echo $_SESSION['usuario']['telefone']; ?>">
+                            <span class="input-group-text bg-transparent custom-input">
+                                <i class="bi bi-whatsapp"></i>
+                            </span>
+
+                            <input
+                                type="tel"
+                                class="form-control bg-transparent custom-input"
+                                id="profPhone"
+                                name="telefone"
+                                value="<?php echo htmlspecialchars($_SESSION['usuario']['telefone'] ?? ''); ?>"
+                            >
                         </div>
                     </div>
 
-                    <!-- Nova Senha (Opcional) -->
+                    <!-- Nova senha -->
                     <div class="mb-4">
-                        <label for="profPassword" class="form-label small font-monospace">Alterar Senha (Opcional)</label>
+                        <label for="profPassword" class="form-label small font-monospace">
+                            Alterar Senha (Opcional)
+                        </label>
+
                         <div class="input-group">
-                            <span class="input-group-text bg-transparent custom-input"><i class="bi bi-shield-lock"></i></span>
-                            <input type="password" class="form-control bg-transparent custom-input" id="profPassword" placeholder="Deixe em branco para não alterar">
+                            <span class="input-group-text bg-transparent custom-input">
+                                <i class="bi bi-shield-lock"></i>
+                            </span>
+
+                            <input
+                                type="password"
+                                class="form-control bg-transparent custom-input"
+                                id="profPassword"
+                                name="nova_senha"
+                                placeholder="Deixe em branco para não alterar"
+                                minlength="8"
+                            >
                         </div>
                     </div>
 
@@ -125,6 +189,23 @@
         </div>
     </div>
 </div>
+
+
+<?php
+require_once "config/database.php";
+require_once "models/Ocorrencia.php";
+
+$minhasOcorrencias = [];
+
+if (isset($_SESSION['usuario'])) {
+    $ocorrenciaModel = new Ocorrencia($pdo);
+
+    $minhasOcorrencias = $ocorrenciaModel->listarPorUsuario(
+        $_SESSION['usuario']['id']
+    );
+}
+?>
+
 
 <!-- Modal 2: Minhas Ocorrências -->
 <div class="modal fade" id="myOccurrencesModal" tabindex="-1" aria-labelledby="myOccurrencesModalLabel" aria-hidden="true">
@@ -148,44 +229,97 @@
                                 <th scope="col">Nível Água</th>
                                 <th scope="col">Data / Hora</th>
                                 <th scope="col">Status</th>
-                                <th scope="col" class="text-end">Ações</th>
+                                <th scope="col">Descrição</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <!-- Exemplo 1 -->
+                        <?php if (empty($minhasOcorrencias)): ?>
+
                             <tr>
-                                <td class="fw-bold">#1024</td>
-                                <td>Rua XPTO (Centro)</td>
-                                <td><span class="badge bg-danger bg-opacity-20 text-danger border border-danger">🔴 Alto</span></td>
-                                <td><small class="opacity-75">08/09/2026 14:30</small></td>
-                                <td><span class="badge bg-warning text-dark">Em Análise</span></td>
-                                <td class="text-end">
-                                    <button class="btn btn-sm btn-outline-danger" onclick="alert('Ocorrência cancelada/excluída.')" title="Excluir">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
+                                <td colspan="6" class="text-center py-4 opacity-75">
+                                    <i class="bi bi-info-circle fs-4 d-block mb-2"></i>
+                                    Você ainda não registrou nenhuma ocorrência.
                                 </td>
                             </tr>
-                            <!-- Exemplo 2 -->
-                            <tr>
-                                <td class="fw-bold">#0981</td>
-                                <td>Av. Brasil (Zona Sul)</td>
-                                <td><span class="badge bg-warning bg-opacity-20 text-warning border border-warning">🟠 Médio</span></td>
-                                <td><small class="opacity-75">01/09/2026 09:15</small></td>
-                                <td><span class="badge bg-success">Resolvido</span></td>
-                                <td class="text-end">
-                                    <button class="btn btn-sm btn-outline-danger" onclick="alert('Ocorrência cancelada/excluída.')" title="Excluir">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                        </tbody>
+
+                        <?php else: ?>
+
+                            <?php foreach ($minhasOcorrencias as $ocorrencia): ?>
+
+                                <?php
+                                $nivel = strtolower($ocorrencia['nivel_agua']);
+
+                                $classeNivel = match ($nivel) {
+                                    'baixo' => 'bg-success text-success',
+                                    'medio' => 'bg-warning text-warning',
+                                    'alto' => 'bg-danger text-danger',
+                                    default => 'bg-secondary text-secondary'
+                                };
+
+                                $iconeNivel = match ($nivel) {
+                                    'baixo' => '🟢',
+                                    'medio' => '🟠',
+                                    'alto' => '🔴',
+                                    default => '⚪'
+                                };
+
+                                $classeStatus = match ($ocorrencia['status']) {
+                                    'Em Análise' => 'bg-warning text-dark',
+                                    'Resolvido' => 'bg-success',
+                                    'Cancelado' => 'bg-danger',
+                                    default => 'bg-secondary'
+                                };
+                                ?>
+
+                                <tr>
+                                    <td class="fw-bold">
+                                        #<?php echo htmlspecialchars($ocorrencia['id_ocorrencia']); ?>
+                                    </td>
+
+                                    <td>
+                                        Região #<?php echo htmlspecialchars($ocorrencia['id_regiao']); ?>
+                                    </td>
+
+                                    <td>
+                                        <span class="badge <?php echo $classeNivel; ?> bg-opacity-25">
+                                            <?php echo $iconeNivel . ' ' . ucfirst($nivel); ?>
+                                        </span>
+                                    </td>
+
+                                    <td>
+                                        <small class="opacity-75">
+                                            <?php
+                                            echo date(
+                                                'd/m/Y H:i',
+                                                strtotime($ocorrencia['data_hora'])
+                                            );
+                                            ?>
+                                        </small>
+                                    </td>
+
+                                    <td>
+                                        <span class="badge <?php echo $classeStatus; ?>">
+                                            <?php echo htmlspecialchars($ocorrencia['status']); ?>
+                                        </span>
+                                    </td>
+
+                                    <td class="text-wrap">
+                                        <?php echo htmlspecialchars($ocorrencia['descricao']); ?>
+                                    </td>
+                                </tr>
+
+                            <?php endforeach; ?>
+
+                        <?php endif; ?>
+                    </tbody>
                     </table>
                 </div>
             </div>
 
             <div class="modal-footer border-top border-secondary border-opacity-25 justify-content-between">
                 <small class="opacity-75">Total de 2 ocorrências enviadas por você.</small>
-                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Fechar</button>
+                
+                
             </div>
 
         </div>
