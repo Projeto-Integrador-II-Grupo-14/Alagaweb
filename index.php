@@ -40,8 +40,13 @@
                                 </div>
                             </div>
                             <div class="col-md-5 d-flex gap-2">
-                                <button class="btn btn-primary w-100 rounded-3" onclick="searchAddress()">
-                                    Consultar
+                                <button
+                                    id="btnConsultar"
+                                    class="btn btn-primary w-100 rounded-3"
+                                    onclick="searchAddress()"
+                                    type="button"
+                                >
+                                    <span id="localizacaoMsg" >Consultar</span>
                                 </button>
                                 <button class="btn btn-outline-secondary w-100 rounded-3 d-flex align-items-center justify-content-center gap-1" onclick="getLocation()">
                                     <i class="bi bi-crosshair"></i> Minha localização

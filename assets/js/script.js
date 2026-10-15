@@ -1,6 +1,9 @@
 // 1. Defina a ordem das URLs (Light primeiro)
-const lightTileUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
-const darkTileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+// const lightTileUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+// const darkTileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+// Alterado para reduzir necessidade de utilização de API KEY
+const lightTileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+const darkTileUrl = 'https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png';
 
 // Inicialização do Mapa
 const map = L.map('map').setView([-23.55052, -46.633309], 12);
@@ -10,7 +13,6 @@ let currentTileLayer = L.tileLayer(lightTileUrl, {
     attribution: '&copy; OpenStreetMap &copy; CARTO',
     maxZoom: 19
 }).addTo(map);
-
 // Marcadores de Exemplo
 const points = [
     { lat: -23.55052, lng: -46.633309, title: "Rua XPTO", risk: "Alto Risco", color: "#dc3545" },
@@ -65,20 +67,61 @@ function getLocation() {
 }
 
 // Pesquisa de Endereço via Nominatim
-function searchAddress() {
+async function searchAddress() {
+
+    const mensagem = document.getElementById("localizacaoMsg");
+
     const query = document.getElementById('addressInput').value;
-    if(!query) return;
+    if (!query) return;
+
+    map.eachLayer((layer) => {
+        // Remove marcadores e círculos
+        if (layer instanceof L.Marker || layer instanceof L.Circle) {
+            map.removeLayer(layer);
+        }
+    });
+
+    mensagem.textContent = "Consultando...";
 
     fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`)
         .then(res => res.json())
-        .then(data => {
-            if(data.length > 0) {
+        .then(async data => {
+            if (data.length > 0) {
                 const { lat, lon } = data[0];
-                map.setView([lat, lon], 14);
+                const risco = await calcRisco(lat, lon);
+                map.setView([lat, lon], 15);
                 L.marker([lat, lon]).addTo(map).bindPopup(query).openPopup();
+                L.circle([lat, lon], { color: risco.cor, fillOpacity: 0.4, radius: 250 }).addTo(map).bindPopup(query).openPopup();
+                mensagem.textContent =
+                "Consultar";
             } else {
-                alert("Endereço não encontrado.");
+                mensagem.textContent = "Endereço não encontrado.";
             }
+        });
+}
+
+function calcRisco(lat, long) {
+    const formData = new FormData();
+    formData.append('latitude', lat);
+    formData.append('longitude', long);
+    return fetch('controllers/OcorrenciaController.php', {
+        method: 'POST',
+        body: formData
+    })
+        .then(data => data.json())
+        .then(data => {
+            console.log("Risco calculado:", data);
+            switch (data.risco) {
+                case 'ALTO':
+                    data.cor = '#ff4d4d';
+                    break;
+                case 'MEDIO':
+                    data.cor = '#ffa64d';
+                    break;
+                default:
+                    data.cor = '#2ed573';
+            }
+            return data;
         });
 }
 
@@ -90,48 +133,6 @@ function prepareOccurrenceForm() {
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
     document.getElementById('data_hora').value = now.toISOString().slice(0, 16);
 
-    // Obtém o centro atual do mapa como referência inicial de coordenadas
-    const center = map.getCenter();
-    document.getElementById('latitude').value = center.lat.toFixed(6);
-    document.getElementById('longitude').value = center.lng.toFixed(6);
-}
-
-
-// Manipula o envio do formulário simulando o envio para o banco de dados
-function handleOccurrenceSubmit(event) {
-    event.preventDefault();
-
-    // Captura dos dados mapeados pela tabela
-    const formData = {
-        id_usuario: document.getElementById('id_usuario').value,
-        id_regiao: document.getElementById('id_regiao').value,
-        descricao: document.getElementById('descricao').value,
-        latitude: parseFloat(document.getElementById('latitude').value),
-        longitude: parseFloat(document.getElementById('longitude').value),
-        nivel_agua: document.getElementById('nivel_agua').value,
-        status: document.getElementById('status').value,
-        data_hora: document.getElementById('data_hora').value
-    };
-
-    console.log("Objeto pronto para o Banco de Dados:", formData);
-
-    // Adiciona o novo ponto no mapa dinamicamente
-    const markerColor = formData.nivel_agua === 'alto' ? '#dc3545' : (formData.nivel_agua === 'medio' ? '#ffc107' : '#198754');
-    
-    L.circleMarker([formData.latitude, formData.longitude], {
-        color: markerColor,
-        fillColor: markerColor,
-        fillOpacity: 0.8,
-        radius: 12
-    }).addTo(map).bindPopup(`<b>Ocorrência Registrada!</b><br>${formData.descricao}`).openPopup();
-
-    // Fecha o modal e exibe mensagem
-    const modalElement = document.getElementById('occurrenceModal');
-    const modal = bootstrap.Modal.getInstance(modalElement);
-    modal.hide();
-
-    alert('Ocorrência registrada com sucesso!');
-    document.getElementById('occurrenceForm').reset();
 }
 
 
@@ -171,49 +172,3 @@ document.getElementById("btnLocalizacao").addEventListener("click", function () 
     );
 });
 
-
-document.addEventListener("DOMContentLoaded", function () {
-
-    const detailsModal = document.getElementById("detailsOccurrenceModal");
-
-    detailsModal.addEventListener("show.bs.modal", function (event) {
-
-        const button = event.relatedTarget;
-
-        const id = button.getAttribute("data-id");
-        const regiao = button.getAttribute("data-regiao");
-        const nivel = button.getAttribute("data-nivel");
-        const data = button.getAttribute("data-data");
-        const status = button.getAttribute("data-status");
-        const descricao = button.getAttribute("data-descricao");
-        const latitude = button.getAttribute("data-latitude");
-        const longitude = button.getAttribute("data-longitude");
-
-        document.getElementById("detailsId").textContent = "#" + id;
-        document.getElementById("detailsRegiao").textContent = "Região #" + regiao;
-        document.getElementById("detailsNivel").textContent = nivel;
-        document.getElementById("detailsData").textContent = formatarData(data);
-        document.getElementById("detailsStatus").textContent = status;
-        document.getElementById("detailsDescricao").textContent = descricao;
-
-        document.getElementById("detailsLatitude").textContent =
-            latitude || "Não informada";
-
-        document.getElementById("detailsLongitude").textContent =
-            longitude || "Não informada";
-    });
-
-    function formatarData(data) {
-        if (!data) {
-            return "Não informada";
-        }
-
-        const dataFormatada = new Date(data);
-
-        if (isNaN(dataFormatada.getTime())) {
-            return data;
-        }
-
-        return dataFormatada.toLocaleString("pt-BR");
-    }
-});

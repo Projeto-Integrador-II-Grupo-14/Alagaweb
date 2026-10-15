@@ -28,7 +28,7 @@
             <div class="modal-body p-4">
 
                 <form id="occurrenceForm"
-                      action="controllers/OcorrenciaController.php"
+                      action="controllers/OcorrenciaRegistroController.php"
                       method="POST">
 
                     <div class="row g-3">
@@ -54,11 +54,11 @@
                                         Selecione a região...
                                     </option>
 
-                                    <option value="1">Centro</option>
-                                    <option value="2">Zona Sul</option>
-                                    <option value="3">Zona Norte</option>
-                                    <option value="4">Zona Leste</option>
-                                    <option value="5">Zona Oeste</option>
+                                    <option value="101">Centro</option>
+                                    <option value="102">Zona Sul</option>
+                                    <option value="103">Zona Norte</option>
+                                    <option value="104">Zona Leste</option>
+                                    <option value="105">Zona Oeste</option>
                                 </select>
                             </div>
                         </div>
@@ -104,20 +104,7 @@
                             Local da ocorrência
                         </label>
 
-                        <div class="input-group">
-                            <span class="input-group-text bg-transparent custom-input">
-                                <i class="bi bi-geo-alt"></i>
-                            </span>
-
-                            <input
-                                type="text"
-                                class="form-control bg-transparent custom-input"
-                                id="endereco"
-                                name="endereco"
-                                placeholder="Rua, avenida, bairro ou ponto de referência"
-                                required
-                            >
-                        </div>
+                       
                     </div>
 
                     <div class="col-12">
@@ -131,13 +118,13 @@
                         </button>
 
                         <small id="localizacaoMensagem" class="text-muted d-block mt-2">
-                            Você também pode informar o endereço manualmente.
+                            Clique no botão acima para preencher automaticamente as coordenadas de latitude e longitude com sua localização atual.
                         </small>
                     </div>
 
                     <!-- Coordenadas preenchidas pelo JavaScript -->
-                    <input type="hidden" id="latitude" name="latitude">
-                    <input type="hidden" id="longitude" name="longitude">
+                    <input type="hidden" id="latitude" name="latitude" required>
+                    <input type="hidden" id="longitude" name="longitude" required>
 
                         <!-- Data e hora -->
                         <div class="col-md-6">

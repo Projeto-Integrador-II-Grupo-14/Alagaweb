@@ -1,67 +1,51 @@
 <?php
-
-session_start();
-
 require_once "../config/database.php";
+require_once "../utils/GeoReferenciamento.php";
+require_once "../utils/Clima.php";
 require_once "../models/Ocorrencia.php";
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+if ($_SERVER['REQUEST_METHOD'] != 'POST') {
     header("Location: ../index.php");
     exit;
 }
 
-if (!isset($_SESSION['usuario'])) {
-    header("Location: ../index.php?erro=nao_logado");
-    exit;
-}
-
-$idUsuario = $_SESSION['usuario']['id'];
-
-$idRegiao = $_POST['id_regiao'] ?? '';
-$nivelAgua = $_POST['nivel_agua'] ?? '';
-$latitude = $_POST['latitude'] ?? '';
-$longitude = $_POST['longitude'] ?? '';
-$dataHora = $_POST['data_hora'] ?? '';
-$descricao = trim($_POST['descricao'] ?? '');
-
-if (
-    $idRegiao === '' ||
-    $nivelAgua === '' ||
-    $latitude === '' ||
-    $longitude === '' ||
-    $dataHora === '' ||
-    $descricao === ''
-) {
-    header("Location: ../index.php?erro=ocorrencia_campos");
-    exit;
-}
-
-if (!is_numeric($latitude) || !is_numeric($longitude)) {
-    header("Location: ../index.php?erro=coordenadas_invalidas");
-    exit;
-}
-
-if (!in_array($nivelAgua, ['baixo', 'medio', 'alto'], true)) {
-    header("Location: ../index.php?erro=nivel_invalido");
-    exit;
-}
+$latitude = $_POST['latitude'];
+$longitude = $_POST['longitude'];
 
 $ocorrenciaModel = new Ocorrencia($pdo);
 
-$sucesso = $ocorrenciaModel->cadastrar(
-    $idUsuario,
-    $idRegiao,
-    $nivelAgua,
-    $latitude,
-    $longitude,
-    $dataHora,
-    $descricao
-);
+$metereologia = ClimaService::obterDadosMetereologicos($latitude, $longitude);
+$riscoRegiao = $ocorrenciaModel->buscarRiscoRegiao($latitude, $longitude);
 
-if ($sucesso) {
-    header("Location: ../index.php?ocorrencia=sucesso");
-    exit;
+/************* RESULTADO FINAL *************/
+
+// Multiplicador de acordo com o histórico do local
+$multiplicadores = [
+    'BAIXO'   => 1.0,
+    'MEDIO'   => 1.2,
+    'ALTO'    => 1.4,
+    'CRITICO' => 1.6
+    ];
+$M = $multiplicadores[strtoupper($riscoRegiao['nivel_risco'])] ?? 1.0;
+    
+// Fator de retenção de água do solo de acordo com fundamentação teórica e utilizado para cáluclos gerais
+$F = 0.85;
+    
+// IPA: Índice de Precipitação Antecedente
+$ipa = (($metereologia['chuva_ontem'] * $F) + $metereologia['chuva_hoje']) * $M;
+
+// Classificação do risco de alagamento com base no IPA
+if ($ipa >= 90) {
+    $nivel = 'ALTO';
+} elseif ($ipa >= 60) {
+    $nivel = 'MEDIO';
+} elseif ($ipa >= 30) {
+    $nivel = 'BAIXO';
+} else {
+    $nivel = 'NORMAL';
 }
 
-header("Location: ../index.php?erro=ocorrencia");
-exit;
+echo json_encode([
+    'metereologia' => $metereologia,
+    'risco' => $nivel
+]);
