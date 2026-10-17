@@ -1,6 +1,9 @@
 // 1. Defina a ordem das URLs (Light primeiro)
-const lightTileUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
-const darkTileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+// const lightTileUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+// const darkTileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+// Alterado para reduzir necessidade de utilização de API KEY
+const lightTileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+const darkTileUrl = 'https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png';
 
 // Inicialização do Mapa
 const map = L.map('map').setView([-23.55052, -46.633309], 12);
@@ -65,20 +68,54 @@ function getLocation() {
 }
 
 // Pesquisa de Endereço via Nominatim
-function searchAddress() {
+async function searchAddress() {
     const query = document.getElementById('addressInput').value;
-    if(!query) return;
+    if (!query) return;
+
+    map.eachLayer((layer) => {
+        // Remove marcadores e círculos
+        if (layer instanceof L.Marker || layer instanceof L.Circle) {
+            map.removeLayer(layer);
+        }
+    });
 
     fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`)
         .then(res => res.json())
-        .then(data => {
-            if(data.length > 0) {
+        .then(async data => {
+            if (data.length > 0) {
                 const { lat, lon } = data[0];
-                map.setView([lat, lon], 14);
+                const risco = await calcRisco(lat, lon);
+                map.setView([lat, lon], 15);
                 L.marker([lat, lon]).addTo(map).bindPopup(query).openPopup();
+                L.circle([lat, lon], { color: risco.cor, fillOpacity: 0.4, radius: 250 }).addTo(map).bindPopup(query).openPopup();
             } else {
                 alert("Endereço não encontrado.");
             }
+        });
+}
+
+function calcRisco(lat, long) {
+    const formData = new FormData();
+    formData.append('latitude', lat);
+    formData.append('longitude', long);
+    return fetch('controllers/OcorrenciaController.php', {
+        method: 'POST',
+        body: formData
+    })
+        .then(data => data.json())
+        .then(data => {
+            console.log("Risco calculado:", data);
+            switch (data.risco) {
+                case 'ALTO':
+                    data.cor = '#ff4d4d';
+                    break;
+                case 'MEDIO':
+                    data.cor = '#ffa64d';
+                    break;
+                default:
+                    data.cor = '#2ed573';
+            }
+            return data;
         });
 }
 
@@ -117,7 +154,7 @@ function handleOccurrenceSubmit(event) {
 
     // Adiciona o novo ponto no mapa dinamicamente
     const markerColor = formData.nivel_agua === 'alto' ? '#dc3545' : (formData.nivel_agua === 'medio' ? '#ffc107' : '#198754');
-    
+
     L.circleMarker([formData.latitude, formData.longitude], {
         color: markerColor,
         fillColor: markerColor,
