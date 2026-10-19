@@ -13,22 +13,143 @@ let currentTileLayer = L.tileLayer(lightTileUrl, {
     attribution: '&copy; OpenStreetMap &copy; CARTO',
     maxZoom: 19
 }).addTo(map);
-
 // Marcadores de Exemplo
-const points = [
-    { lat: -23.55052, lng: -46.633309, title: "Rua XPTO", risk: "Alto Risco", color: "#dc3545" },
-    { lat: -23.56152, lng: -46.655309, title: "Avenida Brasil", risk: "Atenção", color: "#ffc107" },
-    { lat: -23.57052, lng: -46.623309, title: "Jardim América", risk: "Seguro", color: "#198754" }
-];
 
-points.forEach(point => {
-    L.circleMarker([point.lat, point.lng], {
-        color: point.color,
-        fillColor: point.color,
-        fillOpacity: 0.8,
-        radius: 10
-    }).addTo(map).bindPopup(`<b>${point.title}</b><br>Status: ${point.risk}`);
-});
+/**
+ * Marcadores reais de ocorrências do Alagaweb.
+ * A variável "map" deve ter sido inicializada anteriormente.
+ */
+
+const camadaOcorrencias = L.layerGroup().addTo(map);
+
+// Ajuste para o caminho real do endpoint no seu projeto.
+const urlOcorrencias = 'controllers/ListarOcorrencias.php';
+
+function obterCorRisco(nivelAgua) {
+    const risco = String(nivelAgua || '')
+        .trim()
+        .toUpperCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+
+    if (risco.includes('MEDIO')) {
+        return '#ffc107'; // Amarelo
+    }
+
+    if (risco.includes('BAIXO')) {
+        return '#198754'; // Verde
+    }
+
+    if (risco.includes('ALTO')) {
+        return '#dc3545'; // Vermelho
+    }
+
+    return '#0d6efd'; // Azul: risco não informado ou desconhecido
+}
+
+function criarPopupOcorrencia(ocorrencia) {
+    // Usar textContent evita interpretar a descrição como HTML.
+    const container = document.createElement('div');
+
+    const titulo = document.createElement('strong');
+    titulo.textContent = 'Ocorrência #' + ocorrencia.id_ocorrencia;
+    container.appendChild(titulo);
+
+    const descricao = document.createElement('p');
+    descricao.textContent =
+        ocorrencia.descricao || 'Sem descrição informada';
+    descricao.style.margin = '8px 0';
+    container.appendChild(descricao);
+
+    const status = document.createElement('p');
+    status.textContent =
+        'Status: ' + (ocorrencia.status || 'Não informado');
+    status.style.margin = '4px 0';
+    container.appendChild(status);
+
+    const risco = document.createElement('p');
+    risco.textContent =
+        'Risco da região: ' +
+        (ocorrencia.nivel_agua || 'Não informado');
+    risco.style.margin = '4px 0';
+    container.appendChild(risco);
+
+    return container;
+}
+
+async function carregarOcorrenciasMapa() {
+    try {
+        const resposta = await fetch(urlOcorrencias, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json'
+            },
+            cache: 'no-store'
+        });
+
+        if (!resposta.ok) {
+            throw new Error(
+                'O servidor respondeu com HTTP ' + resposta.status
+            );
+        }
+
+        const dados = await resposta.json();
+
+        if (!Array.isArray(dados)) {
+            throw new Error(
+                dados.erro || 'A resposta da API não é uma lista.'
+            );
+        }
+
+        // Evita duplicar marcadores se a função for chamada novamente.
+        camadaOcorrencias.clearLayers();
+
+        dados.forEach(function (ocorrencia) {
+            const lat = Number(ocorrencia.latitude);
+            const lng = Number(ocorrencia.longitude);
+
+            // Ignora registros com coordenadas inválidas.
+            if (
+                ocorrencia.latitude === null ||
+                ocorrencia.longitude === null ||
+                ocorrencia.latitude === '' ||
+                ocorrencia.longitude === '' ||
+                !Number.isFinite(lat) ||
+                !Number.isFinite(lng) ||
+                lat < -90 || lat > 90 ||
+                lng < -180 || lng > 180
+            ) {
+                return;
+            }
+
+            const marcador = L.circleMarker([lat, lng], {
+                radius: 8,
+                color: '#ffffff',
+                weight: 2,
+                fillColor: obterCorRisco(ocorrencia.nivel_agua),
+                fillOpacity: 0.9
+            });
+
+            marcador.bindPopup(criarPopupOcorrencia(ocorrencia));
+
+            marcador.addTo(camadaOcorrencias);
+        });
+
+        console.info(
+            'Ocorrências carregadas no mapa:',
+            camadaOcorrencias.getLayers().length
+        );
+
+    } catch (erro) {
+        console.error(
+            'Erro ao carregar ocorrências do Alagaweb:',
+            erro
+        );
+    }
+}
+
+// Carrega os registros quando o mapa já está inicializado.
+carregarOcorrenciasMapa();
 
 // Alternador de Tema
 function toggleTheme() {
@@ -69,6 +190,9 @@ function getLocation() {
 
 // Pesquisa de Endereço via Nominatim
 async function searchAddress() {
+
+    const mensagem = document.getElementById("localizacaoMsg");
+
     const query = document.getElementById('addressInput').value;
     if (!query) return;
 
@@ -79,6 +203,8 @@ async function searchAddress() {
         }
     });
 
+    mensagem.textContent = "Consultando...";
+
     fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`)
         .then(res => res.json())
         .then(async data => {
@@ -88,8 +214,10 @@ async function searchAddress() {
                 map.setView([lat, lon], 15);
                 L.marker([lat, lon]).addTo(map).bindPopup(query).openPopup();
                 L.circle([lat, lon], { color: risco.cor, fillOpacity: 0.4, radius: 250 }).addTo(map).bindPopup(query).openPopup();
+                mensagem.textContent =
+                "Consultar";
             } else {
-                alert("Endereço não encontrado.");
+                mensagem.textContent = "Endereço não encontrado.";
             }
         });
 }
@@ -127,46 +255,42 @@ function prepareOccurrenceForm() {
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
     document.getElementById('data_hora').value = now.toISOString().slice(0, 16);
 
-    // Obtém o centro atual do mapa como referência inicial de coordenadas
-    const center = map.getCenter();
-    document.getElementById('latitude').value = center.lat.toFixed(6);
-    document.getElementById('longitude').value = center.lng.toFixed(6);
 }
 
 
-// Manipula o envio do formulário simulando o envio para o banco de dados
-function handleOccurrenceSubmit(event) {
-    event.preventDefault();
+// Localizar coordenadas ocorrência
 
-    // Captura dos dados mapeados pela tabela
-    const formData = {
-        id_usuario: document.getElementById('id_usuario').value,
-        id_regiao: document.getElementById('id_regiao').value,
-        descricao: document.getElementById('descricao').value,
-        latitude: parseFloat(document.getElementById('latitude').value),
-        longitude: parseFloat(document.getElementById('longitude').value),
-        nivel_agua: document.getElementById('nivel_agua').value,
-        status: document.getElementById('status').value,
-        data_hora: document.getElementById('data_hora').value
-    };
+document.getElementById("btnLocalizacao").addEventListener("click", function () {
 
-    console.log("Objeto pronto para o Banco de Dados:", formData);
+    const mensagem = document.getElementById("localizacaoMensagem");
 
-    // Adiciona o novo ponto no mapa dinamicamente
-    const markerColor = formData.nivel_agua === 'alto' ? '#dc3545' : (formData.nivel_agua === 'medio' ? '#ffc107' : '#198754');
+    if (!navigator.geolocation) {
+        mensagem.textContent = "Seu navegador não oferece suporte à localização.";
+        return;
+    }
 
-    L.circleMarker([formData.latitude, formData.longitude], {
-        color: markerColor,
-        fillColor: markerColor,
-        fillOpacity: 0.8,
-        radius: 12
-    }).addTo(map).bindPopup(`<b>Ocorrência Registrada!</b><br>${formData.descricao}`).openPopup();
+    mensagem.textContent = "Obtendo sua localização...";
 
-    // Fecha o modal e exibe mensagem
-    const modalElement = document.getElementById('occurrenceModal');
-    const modal = bootstrap.Modal.getInstance(modalElement);
-    modal.hide();
+    navigator.geolocation.getCurrentPosition(
+        function (position) {
+            document.getElementById("latitude").value =
+                position.coords.latitude;
 
-    alert('Ocorrência registrada com sucesso!');
-    document.getElementById('occurrenceForm').reset();
-}
+            document.getElementById("longitude").value =
+                position.coords.longitude;
+
+            mensagem.textContent =
+                "Localização obtida com sucesso. Confirme o endereço antes de enviar.";
+        },
+        function () {
+            mensagem.textContent =
+                "Não foi possível obter sua localização. Informe o endereço manualmente.";
+        },
+        {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+        }
+    );
+});
+

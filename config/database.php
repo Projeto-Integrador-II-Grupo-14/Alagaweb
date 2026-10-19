@@ -1,9 +1,9 @@
 <?php
 
-$host = "aws-1-us-east-1.pooler.supabase.com";
-$port = "6543";
+$host = "db.vapquaogbccjekvlpzhg.supabase.co";
+$port = "5432";
 $dbname = "postgres";
-$user = "postgres.vapquaogbccjekvlpzhg";
+$user = "postgres";
 $password = "alagaweb0111";
 
 try {

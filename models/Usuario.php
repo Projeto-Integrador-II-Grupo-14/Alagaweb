@@ -49,4 +49,36 @@ class Usuario
 
         return $stmt->fetchColumn() > 0;
     }
+
+    public function atualizar($id, $nome, $telefone)
+    {
+        $sql = "UPDATE usuarios
+                SET nome = :nome,
+                    telefone = :telefone
+                WHERE id_usuario = :id";
+
+        $stmt = $this->pdo->prepare($sql);
+
+        return $stmt->execute([
+            ":id" => $id,
+            ":nome" => $nome,
+            ":telefone" => $telefone
+        ]);
+    }
+
+    public function atualizarSenha($id, $novaSenha)
+    {
+        $sql = "UPDATE usuarios
+                SET senha = :senha
+                WHERE id_usuario = :id";
+
+        $stmt = $this->pdo->prepare($sql);
+
+        return $stmt->execute([
+            ":id" => $id,
+            ":senha" => password_hash($novaSenha, PASSWORD_DEFAULT)
+        ]);
+    }
+
+    
 }
