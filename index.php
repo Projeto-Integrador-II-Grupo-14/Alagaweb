@@ -77,60 +77,10 @@
                 </div>
             </div>
 
-            <div class="row mb-4">
-                <div class="col-12">
-                    <div class="glass-card p-4">
-                        <h5 class="fw-bold mb-3 d-flex align-items-center gap-2">
-                            <i class="bi bi-clock-history text-primary"></i> Últimas Ocorrências
-                        </h5>
-                        <div class="list-group list-group-flush bg-transparent">
-                            <div class="list-group-item bg-transparent d-flex justify-content-between align-items-center border-bottom px-0">
-                                <span><i class="bi bi-circle-fill text-danger me-2"></i> Rua XPTO - Ponto crítico de alagamento</span>
-                                <small class="opacity-75">Há 5 min</small>
-                            </div>
-                            <div class="list-group-item bg-transparent d-flex justify-content-between align-items-center border-bottom px-0">
-                                <span><i class="bi bi-circle-fill text-warning me-2"></i> Avenida Brasil - Acúmulo de água na via</span>
-                                <small class="opacity-75">Há 18 min</small>
-                            </div>
-                            <div class="list-group-item bg-transparent d-flex justify-content-between align-items-center border-0 px-0">
-                                <span><i class="bi bi-circle-fill text-success me-2"></i> Jardim América - Trânsito normalizado</span>
-                                <small class="opacity-75">Há 42 min</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        
+            <?php include "includes/listar_ocorrencias.php"; ?>
+            <?php include "includes/dados.php"; ?>
 
-            <div class="row g-3 mb-5">
-                <div class="col-6 col-md-3">
-                    <div class="glass-card p-3 text-center">
-                        <i class="bi bi-exclamation-triangle fs-3 text-warning"></i>
-                        <h3 class="fw-bold my-1">24</h3>
-                        <small class="opacity-75">Ocorrências</small>
-                    </div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="glass-card p-3 text-center">
-                        <i class="bi bi-map fs-3 text-info"></i>
-                        <h3 class="fw-bold my-1">12</h3>
-                        <small class="opacity-75">Regiões</small>
-                    </div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="glass-card p-3 text-center">
-                        <i class="bi bi-people fs-3 text-primary"></i>
-                        <h3 class="fw-bold my-1">1.4k</h3>
-                        <small class="opacity-75">Usuários</small>
-                    </div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="glass-card p-3 text-center">
-                        <i class="bi bi-bell fs-3 text-danger"></i>
-                        <h3 class="fw-bold my-1">3</h3>
-                        <small class="opacity-75">Alertas Ativos</small>
-                    </div>
-                </div>
-            </div>
         </div>
 
         <?php include "includes/forms_cadastro.php"; ?>

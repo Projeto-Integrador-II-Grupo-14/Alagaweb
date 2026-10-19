@@ -41,11 +41,6 @@ if (!is_numeric($latitude) || !is_numeric($longitude)) {
     exit;
 }
 
-if (!in_array($nivelAgua, ['baixo', 'medio', 'alto'], true)) {
-    header("Location: ../index.php?erro=nivel_invalido");
-    exit;
-}
-
 $ocorrenciaModel = new Ocorrencia($pdo);
 
 $sucesso = $ocorrenciaModel->cadastrar(

@@ -14,20 +14,142 @@ let currentTileLayer = L.tileLayer(lightTileUrl, {
     maxZoom: 19
 }).addTo(map);
 // Marcadores de Exemplo
-const points = [
-    { lat: -23.55052, lng: -46.633309, title: "Rua XPTO", risk: "Alto Risco", color: "#dc3545" },
-    { lat: -23.56152, lng: -46.655309, title: "Avenida Brasil", risk: "Atenção", color: "#ffc107" },
-    { lat: -23.57052, lng: -46.623309, title: "Jardim América", risk: "Seguro", color: "#198754" }
-];
 
-points.forEach(point => {
-    L.circleMarker([point.lat, point.lng], {
-        color: point.color,
-        fillColor: point.color,
-        fillOpacity: 0.8,
-        radius: 10
-    }).addTo(map).bindPopup(`<b>${point.title}</b><br>Status: ${point.risk}`);
-});
+/**
+ * Marcadores reais de ocorrências do Alagaweb.
+ * A variável "map" deve ter sido inicializada anteriormente.
+ */
+
+const camadaOcorrencias = L.layerGroup().addTo(map);
+
+// Ajuste para o caminho real do endpoint no seu projeto.
+const urlOcorrencias = 'controllers/ListarOcorrencias.php';
+
+function obterCorRisco(nivelAgua) {
+    const risco = String(nivelAgua || '')
+        .trim()
+        .toUpperCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+
+    if (risco.includes('MEDIO')) {
+        return '#ffc107'; // Amarelo
+    }
+
+    if (risco.includes('BAIXO')) {
+        return '#198754'; // Verde
+    }
+
+    if (risco.includes('ALTO')) {
+        return '#dc3545'; // Vermelho
+    }
+
+    return '#0d6efd'; // Azul: risco não informado ou desconhecido
+}
+
+function criarPopupOcorrencia(ocorrencia) {
+    // Usar textContent evita interpretar a descrição como HTML.
+    const container = document.createElement('div');
+
+    const titulo = document.createElement('strong');
+    titulo.textContent = 'Ocorrência #' + ocorrencia.id_ocorrencia;
+    container.appendChild(titulo);
+
+    const descricao = document.createElement('p');
+    descricao.textContent =
+        ocorrencia.descricao || 'Sem descrição informada';
+    descricao.style.margin = '8px 0';
+    container.appendChild(descricao);
+
+    const status = document.createElement('p');
+    status.textContent =
+        'Status: ' + (ocorrencia.status || 'Não informado');
+    status.style.margin = '4px 0';
+    container.appendChild(status);
+
+    const risco = document.createElement('p');
+    risco.textContent =
+        'Risco da região: ' +
+        (ocorrencia.nivel_agua || 'Não informado');
+    risco.style.margin = '4px 0';
+    container.appendChild(risco);
+
+    return container;
+}
+
+async function carregarOcorrenciasMapa() {
+    try {
+        const resposta = await fetch(urlOcorrencias, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json'
+            },
+            cache: 'no-store'
+        });
+
+        if (!resposta.ok) {
+            throw new Error(
+                'O servidor respondeu com HTTP ' + resposta.status
+            );
+        }
+
+        const dados = await resposta.json();
+
+        if (!Array.isArray(dados)) {
+            throw new Error(
+                dados.erro || 'A resposta da API não é uma lista.'
+            );
+        }
+
+        // Evita duplicar marcadores se a função for chamada novamente.
+        camadaOcorrencias.clearLayers();
+
+        dados.forEach(function (ocorrencia) {
+            const lat = Number(ocorrencia.latitude);
+            const lng = Number(ocorrencia.longitude);
+
+            // Ignora registros com coordenadas inválidas.
+            if (
+                ocorrencia.latitude === null ||
+                ocorrencia.longitude === null ||
+                ocorrencia.latitude === '' ||
+                ocorrencia.longitude === '' ||
+                !Number.isFinite(lat) ||
+                !Number.isFinite(lng) ||
+                lat < -90 || lat > 90 ||
+                lng < -180 || lng > 180
+            ) {
+                return;
+            }
+
+            const marcador = L.circleMarker([lat, lng], {
+                radius: 8,
+                color: '#ffffff',
+                weight: 2,
+                fillColor: obterCorRisco(ocorrencia.nivel_agua),
+                fillOpacity: 0.9
+            });
+
+            marcador.bindPopup(criarPopupOcorrencia(ocorrencia));
+
+            marcador.addTo(camadaOcorrencias);
+        });
+
+        console.info(
+            'Ocorrências carregadas no mapa:',
+            camadaOcorrencias.getLayers().length
+        );
+
+    } catch (erro) {
+        console.error(
+            'Erro ao carregar ocorrências do Alagaweb:',
+            erro
+        );
+    }
+}
+
+// Carrega os registros quando o mapa já está inicializado.
+carregarOcorrenciasMapa();
 
 // Alternador de Tema
 function toggleTheme() {
