@@ -12,7 +12,7 @@ $ultimasOcorrencias = [];
 ?>
 
 
-<div class="row mb-4">
+<div class="row mb-4" id="alertas">
     <div class="col-12">
         <div class="glass-card p-4">
 

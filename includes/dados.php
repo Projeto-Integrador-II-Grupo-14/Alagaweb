@@ -16,7 +16,7 @@ $regioesAltoRisco = (int) ($indicadores['regioes_alto_risco'] ?? 0);
 ?>
 
 
-<div class="row g-3 mb-5">
+<div class="row g-3 mb-5" id="estatisticas">
 
     <!-- Total de ocorrências -->
     <div class="col-6 col-md-3">

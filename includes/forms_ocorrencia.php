@@ -103,7 +103,7 @@
                         <label for="endereco" class="form-label small font-monospace">
                             Local da ocorrência
                         </label>
-
+                        <input type="text" id="endereco" class="form-control bg-transparent custom-input" placeholder="Endereço da ocorrência" disabled>
                        
                     </div>
 
