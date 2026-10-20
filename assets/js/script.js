@@ -179,7 +179,16 @@ function getLocation() {
             const lat = position.coords.latitude;
             const lng = position.coords.longitude;
             map.setView([lat, lng], 15);
+
+            map.eachLayer((layer) => {
+                // Remove marcadores e círculos
+                if (layer instanceof L.Marker || layer instanceof L.Circle) {
+                    map.removeLayer(layer);
+                }
+            });
+
             L.marker([lat, lng]).addTo(map).bindPopup("Você está aqui!").openPopup();
+            preencheMinhaLocalizacao(lat, lng);
         }, () => {
             alert("Não foi possível obter sua localização.");
         });
@@ -210,13 +219,18 @@ async function searchAddress() {
         .then(async data => {
             if (data.length > 0) {
                 const { lat, lon } = data[0];
-                const risco = await calcRisco(lat, lon);
-                map.setView([lat, lon], 15);
-                L.marker([lat, lon]).addTo(map).bindPopup(query).openPopup();
-                L.circle([lat, lon], { color: risco.cor, fillOpacity: 0.4, radius: 250 }).addTo(map).bindPopup(query).openPopup();
-                mensagem.textContent =
-                "Consultar";
-            } else {
+                if (!limiteSaoPaulo(lat, lon)) {
+                    mensagem.textContent = "Informe apenas São Paulo.";
+                    return;
+                } else {
+                    const risco = await calcRisco(lat, lon);
+                    map.setView([lat, lon], 15);
+                    L.marker([lat, lon]).addTo(map).bindPopup(query).openPopup();
+                    L.circle([lat, lon], { color: risco.cor, fillOpacity: 0.4, radius: 250 }).addTo(map).bindPopup(query).openPopup();
+                    mensagem.textContent = "Consultar";
+                }
+            }
+            else {
                 mensagem.textContent = "Endereço não encontrado.";
             }
         });
@@ -232,7 +246,6 @@ function calcRisco(lat, long) {
     })
         .then(data => data.json())
         .then(data => {
-            console.log("Risco calculado:", data);
             switch (data.risco) {
                 case 'ALTO':
                     data.cor = '#ff4d4d';
@@ -247,6 +260,15 @@ function calcRisco(lat, long) {
         });
 }
 
+// Verifica se as coordenadas estão dentro do município de São Paulo
+function limiteSaoPaulo(lat, lon) {
+    // Limites aproximados do município de São Paulo
+    const minLat = -24.00, maxLat = -23.35;
+    const minLon = -46.80, maxLon = -46.35;
+
+    return (lat >= minLat && lat <= maxLat && lon >= minLon && lon <= maxLon);
+}
+
 
 // Prepara os campos automáticos do formulário antes de abrir o modal
 function prepareOccurrenceForm() {
@@ -257,6 +279,65 @@ function prepareOccurrenceForm() {
 
 }
 
+// Preenchimento automático do endereço baseado em coordenadas no form de cadastro de ocorrencia
+function preencheEndereco(lat, long) {
+
+    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${long}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data && data.address) {
+                const addr = data.address;
+
+                const rua = addr.road || addr.pedestrian || addr.street || '';
+
+                const cidade = addr.city || addr.town || addr.village || addr.municipality || '';
+
+                const estado = addr.state || '';
+                const cep = addr.postcode || '';
+
+                const partes = [rua, cidade, estado, cep].filter(Boolean);
+                const enderecoFormatado = partes.join(', ');
+
+                document.getElementById('endereco').value = enderecoFormatado;
+            } else {
+                console.log("Endereço não encontrado.");
+            }
+        })
+        .catch(error => {
+            console.error("Erro ao buscar o endereço:", error);
+        });
+
+}
+
+// Preenchimento automático do endereço baseado em coordenadas no form de cadastro de ocorrencia
+function preencheMinhaLocalizacao(lat, long) {
+
+    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${long}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data && data.address) {
+                const addr = data.address;
+
+                const rua = addr.road || addr.pedestrian || addr.street || '';
+
+                const cidade = addr.city || addr.town || addr.village || addr.municipality || '';
+
+                const estado = addr.state || '';
+                const cep = addr.postcode || '';
+
+                const partes = [rua, cidade, estado, cep].filter(Boolean);
+                const enderecoFormatado = partes.join(', ');
+
+                document.getElementById('addressInput').value = enderecoFormatado;
+            } else {
+                console.log("Endereço não encontrado.");
+            }
+        })
+        .catch(error => {
+            console.error("Erro ao buscar o endereço:", error);
+        });
+
+}
 
 // Localizar coordenadas ocorrência
 
@@ -281,6 +362,8 @@ document.getElementById("btnLocalizacao").addEventListener("click", function () 
 
             mensagem.textContent =
                 "Localização obtida com sucesso. Confirme o endereço antes de enviar.";
+
+            preencheEndereco(position.coords.latitude, position.coords.longitude);
         },
         function () {
             mensagem.textContent =

@@ -17,6 +17,9 @@ $ocorrenciaModel = new Ocorrencia($pdo);
 $metereologia = ClimaService::obterDadosMetereologicos($latitude, $longitude);
 $riscoRegiao = $ocorrenciaModel->buscarRiscoRegiao($latitude, $longitude);
 
+if ($riscoRegiao === false) {
+    $riscoRegiao = ['nivel_risco' => 'BAIXO'];
+}
 /************* RESULTADO FINAL *************/
 
 // Multiplicador de acordo com o histórico do local
